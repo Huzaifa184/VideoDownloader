@@ -1,0 +1,119 @@
+﻿@page
+@using Microsoft.AspNetCore.Mvc.Core;
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">
+        <img src="~/images/yt_logo_rgb_light.png" alt="YouTube logo" height="50">
+    </h1>
+</div>
+
+
+
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <form method="post">
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" placeholder="Enter a keyword to search for on YouTube" aria-label="Enter a keyword to search for on YouTube" aria-describedby="button-addon2" name="keyword">
+                    <button class="btn btn-primary" type="submit" id="button-addon2">Search</button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <a href="/Login" class="btn btn-success">Login</a>
+
+    <div class="row justify-content-center" id="videoList">
+        @if (Model.Logins.Any())
+        {
+            @foreach (var login in Model.Logins)
+            {
+                @if (!string.IsNullOrEmpty(login.VideoId))
+                {
+                    <div class="col-md-4 mb-3">
+                        <div class="card">
+                            <img src="https://img.youtube.com/vi/@login.VideoId/mqdefault.jpg" class="card-img-top" alt="Thumbnail">
+                            <div class="card-body">
+                                <h5 class="card-title">@login.Title</h5>
+                                <p class="card-text">@login.Description.Substring(0, Math.Min(100, @login.Description.Length))</p>
+                                <a href="/Download?videoUrl=@Html.Raw(System.Net.WebUtility.UrlEncode(login.Yturl))" class="btn btn-primary">Download</a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        }
+        else
+        {
+            <p>No search results found.</p>
+        }
+    </div>
+
+
+  
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+}
+<script src="https://apis.google.com/js/api.js"></script>
+<script>
+    function onClientLoad() {
+        gapi.client.load('youtube', 'v3', function () {
+            
+        });
+    }
+
+    function search() {
+        var q = $('input[name="keyword"]').val();
+        var request = gapi.client.youtube.search.list({
+            q: q,
+            part: 'snippet',
+            type: 'video'
+        });
+        request.execute(function (response) {
+            var html = '';
+            var videos = response.result.items;
+            $.each(videos, function (index, video) {
+                html += '<div class="col-md-4 mb-3">';
+                html += '<div class="card">';
+                html += '<img src="' + video.snippet.thumbnails.medium.url + '" class="card-img-top" alt="' + video.snippet.title + '">';
+                html += '<div class="card-body">';
+                html += '<h5 class="card-title">' + video.snippet.title + '</h5>';
+                html += '<p class="card-text">' + video.snippet.description + '</p>';
+                html += '<button type="button" class="btn btn-primary" data-video-id="' + video.id.videoId + '">Download</button>';
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            });
+            $('#videoList').html(html);
+        });
+    }
+
+
+    $(document).ready(function () {
+        gapi.load('client', { 'callback': onClientLoad });
+
+        $('#button-addon2').click(function () {
+            search();
+        });
+
+        $('form').submit(function (event) {
+            event.preventDefault(); 
+            search();
+        });
+
+        $(document).on('click', 'button[data-video-id]', function () {
+            var videoId = $(this).data('video-id');
+            var videoUrl = 'https://www.youtube.com/embed/' + videoId + '?rel=0&amp;showinfo=0';
+            $('#video-modal').find('iframe').attr('src', videoUrl);
+            $('#video-modal').modal('show');
+        });
+    });
+</script>
